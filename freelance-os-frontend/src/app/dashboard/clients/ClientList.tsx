@@ -6,27 +6,19 @@ import { fetchWithToken } from '../../../lib/api';
 import { toast } from "react-hot-toast"; 
 import { motion } from "framer-motion";
 
-type Client = {
-  id: string;
-  name: string;
-  email: string;
-};
+type Client = { id: string; name: string; email: string };
 
 export const ClientList = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingData, setEditingData] = useState<ClientData | undefined>(undefined);
 
   const loadClients = async () => {
     setLoading(true);
-    setError('');
     try {
-      const data = await fetchWithToken('/clients', { method: 'GET' });
+      const data: Client[] = await fetchWithToken('/clients', { method: 'GET' });
       setClients(data);
     } catch (err: any) {
-      setError(err.message);
+      toast.error(`Error al cargar clientes: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -36,69 +28,49 @@ export const ClientList = () => {
     loadClients();
   }, []);
 
-  const addClient = async (newClient: ClientData) => {
-    setError('');
+  const addClient = async (newClient: { name: string; email: string }) => {
     try {
       await fetchWithToken('/clients', {
         method: 'POST',
         body: JSON.stringify(newClient),
       });
+      toast.success('Cliente creado correctamente');
       await loadClients();
     } catch (err: any) {
-      setError(err.message);
+      toast.error(`Error al crear cliente: ${err.message}`);
     }
   };
 
-  const updateClient = async (data: ClientData) => {
-    if (!editingId) return;
-    setError('');
+  const updateClient = async (id: string, updated: { name: string; email: string }) => {
     try {
-      await fetchWithToken(`/clients/${editingId}`, {
+      await fetchWithToken(`/clients/${id}`, {
         method: 'PUT',
-        body: JSON.stringify(data),
+        body: JSON.stringify(updated),
       });
-      setEditingId(null);
-      setEditingData(undefined);
+      toast.success('Cliente actualizado correctamente');
       await loadClients();
     } catch (err: any) {
-      setError(err.message);
+      toast.error(`Error al actualizar cliente: ${err.message}`);
     }
   };
 
   const deleteClient = async (id: string) => {
-    setError('');
     try {
       await fetchWithToken(`/clients/${id}`, { method: 'DELETE' });
+      toast.success('Cliente eliminado correctamente');
       await loadClients();
     } catch (err: any) {
-      setError(err.message);
+      toast.error(`Error al eliminar cliente: ${err.message}`);
     }
-  };
-
-  const startEdit = (client: Client) => {
-    setEditingId(client.id);
-    setEditingData({ name: client.name, email: client.email });
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setEditingData(undefined);
   };
 
   return (
     <div className="space-y-6 p-4 bg-gray-50 rounded shadow">
-      {/* Formulario: modo crear o editar */}
-      <ClientForm
-        initialData={editingData}
-        onCreate={addClient}
-        onUpdate={updateClient}
-        onCancel={cancelEdit}
-      />
+      <ClientForm onCreate={addClient} />
 
-      {loading && <p>Cargando clientes…</p>}
-      {error && <p className="text-red-500">{error}</p>}
-
-      {!loading && (
+      {loading ? (
+        <p>Cargando clientes…</p>
+      ) : (
         <ul className="space-y-4">
           {clients.map((client) => (
             <li
@@ -111,7 +83,7 @@ export const ClientList = () => {
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => startEdit(client)}
+                  onClick={() => updateClient(client.id, { name: client.name, email: client.email })}
                   className="text-blue-500 hover:underline"
                 >
                   Editar
@@ -130,5 +102,4 @@ export const ClientList = () => {
     </div>
   );
 };
-
 
