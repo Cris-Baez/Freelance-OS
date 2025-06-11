@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { fetchWithToken } from '../../../lib/api';
 import { TaskForm, TaskData } from './TaskForm';
 
-type RawProject = { id: string; name?: string; title?: string };
 type Project = { id: string; name: string };
 type Task = TaskData & { id: string; project: Project };
 
@@ -14,31 +14,25 @@ export const TaskList = () => {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Task | null>(null);
 
+  // Carga inicial de tareas y proyectos
   const loadAll = async () => {
     setLoading(true);
     try {
-      // 1) Traer tareas y proyectos
       const [tskRaw, prjRaw] = await Promise.all([
-        fetchWithToken('/tasks',    { method: 'GET' }),
+        fetchWithToken('/tasks', { method: 'GET' }),
         fetchWithToken('/projects', { method: 'GET' }),
       ]);
-
-      // 2) Loguear proyectos crudos
-      console.log('Proyectos crudos:', prjRaw);
-
-      // 3) Mapear proyectos usando name o title
-      const mapped: Project[] = (prjRaw as RawProject[]).map((p) => ({
+      // Mapea proyectos
+      const mappedProjects: Project[] = (prjRaw as any[]).map((p) => ({
         id: p.id,
-        name: p.name ?? p.title ?? 'Sin nombre',
+        name: p.name,
       }));
-
-      console.log('Proyectos mapeados:', mapped);
-
-      // 4) Guardar en estado
+      setProjects(mappedProjects);
       setTasks(tskRaw as Task[]);
-      setProjects(mapped);
-    } catch (err) {
-      console.error('Error cargando tareas/proyectos:', err);
+      toast.success('Datos de tareas y proyectos cargados');
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Error cargando datos: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -48,30 +42,51 @@ export const TaskList = () => {
     loadAll();
   }, []);
 
+  // Crear tarea
   const create = async (data: TaskData) => {
-    await fetchWithToken('/tasks', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    loadAll();
+    try {
+      await fetchWithToken('/tasks', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      toast.success('Tarea creada');
+      loadAll();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Error al crear tarea: ${err.message}`);
+    }
   };
 
+  // Actualizar tarea
   const update = async (data: TaskData) => {
     if (!editing) return;
-    await fetchWithToken(`/tasks/${editing.id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-    setEditing(null);
-    loadAll();
+    try {
+      await fetchWithToken(`/tasks/${editing.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      toast.success('Tarea actualizada');
+      setEditing(null);
+      loadAll();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Error al actualizar tarea: ${err.message}`);
+    }
   };
 
+  // Eliminar tarea
   const remove = async (id: string) => {
-    await fetchWithToken(`/tasks/${id}`, { method: 'DELETE' });
-    loadAll();
+    try {
+      await fetchWithToken(`/tasks/${id}`, { method: 'DELETE' });
+      toast.success('Tarea eliminada');
+      loadAll();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Error al eliminar tarea: ${err.message}`);
+    }
   };
 
-  if (loading) return <p>Cargando tareas…</p>;
+  if (loading) return <p className="p-4 text-center">Cargando tareas…</p>;
 
   return (
     <div className="space-y-6 p-4 bg-gray-50 rounded shadow">
@@ -85,17 +100,26 @@ export const TaskList = () => {
 
       <ul className="space-y-4">
         {tasks.map((t) => (
-          <li key={t.id} className="bg-white p-4 rounded shadow flex justify-between">
+          <li
+            key={t.id}
+            className="bg-white p-4 rounded shadow flex justify-between items-center"
+          >
             <div>
               <p className="font-bold">{t.title}</p>
               <p className="text-sm text-gray-600">Proyecto: {t.project.name}</p>
               <p className="text-sm text-gray-600">Estado: {t.status}</p>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setEditing(t)} className="text-blue-500">
+              <button
+                onClick={() => setEditing(t)}
+                className="text-blue-500 hover:underline"
+              >
                 Editar
               </button>
-              <button onClick={() => remove(t.id)} className="text-red-500">
+              <button
+                onClick={() => remove(t.id)}
+                className="text-red-500 hover:underline"
+              >
                 Eliminar
               </button>
             </div>
