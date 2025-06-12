@@ -5,9 +5,6 @@ export default function Home() {
   return (
     <main className="flex items-center justify-center h-screen flex-col gap-4">
       <h1 className="text-3xl font-bold">Freelance OS</h1>
-      <Link href="/login">
-        <Button>Ir al Login</Button>
-      </Link>
       <div>
         <Link href="/login">
           <Button>Ir al Login</Button>
