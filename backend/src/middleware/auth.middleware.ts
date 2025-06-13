@@ -1,33 +1,25 @@
-import { Request, Response, NextFunction, RequestHandler } from 'express';
+// src/middleware/auth.middleware.ts
 import jwt from 'jsonwebtoken';
+import { Request, Response, NextFunction } from 'express';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecret';
+const JWT_SECRET = process.env.JWT_SECRET!;
 
 export interface AuthRequest extends Request {
-  userId?: string;
+  user?: { id: string; role: string };
 }
 
-// Lo tipamos como RequestHandler para que encaje en router.use(...)
-export const authenticate: RequestHandler = (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
   const header = req.headers.authorization;
-  if (!header) {
-    res.status(401).json({ error: 'Token no provisto' });
-    return; // <— sin devolver el Response
-  }
-
-  const [, token] = header.split(' ');
+  if (!header) return res.status(401).json({ error: 'Token no provisto' });
+  const token = header.split(' ')[1];
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as { userId: string };
-    req.userId = payload.userId;
-    next(); // <— seguimos la cadena de middlewares
+    const payload = jwt.verify(token, JWT_SECRET) as { userId: string; role: string };
+    req.user = { id: payload.userId, role: payload.role };
+    next();
   } catch {
     res.status(401).json({ error: 'Token inválido' });
-    // no devolvemos nada más
   }
 };
+
 
 
